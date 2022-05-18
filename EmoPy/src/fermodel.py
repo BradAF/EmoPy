@@ -1,9 +1,14 @@
 from keras.models import load_model
 import cv2
-from scipy import misc
+import imageio
 import numpy as np
 import json
+import matplotlib.pyplot as plt
 from pkg_resources import resource_filename
+from tensorflow.compat.v1.keras.losses import cosine_proximity
+import os
+
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 
 class FERModel:
     """
@@ -50,20 +55,40 @@ class FERModel:
 
         :param images: image file (jpg or png format)
         """
-        image = misc.imread(image_file)
-        return self.predict_from_ndarray(image)
+        image = imageio.imread(image_file)
+        #image = plt.imread(image_file)
+        print(f"------------")
+        print(f"{type(image)}")
+        print(f"{image}")
+        print(f"------------")
+        return np.asarray(self.predict_from_ndarray(image))
+        #return self.predict_from_ndarray(image)
 
     def predict_from_ndarray(self, image_array):
         """
         Predicts discrete emotion for given image.
-
         :param image_array: a n dimensional array representing an image
         """
         gray_image = image_array
         if len(image_array.shape) > 2:
-            gray_image = cv2.cvtColor(image_array, code=cv2.COLOR_BGR2GRAY)
+            gray_image = cv2.cvdtColor(image_array, code=cv2.COLOR_BGR2GRAY)
         resized_image = cv2.resize(gray_image, self.target_dimensions, interpolation=cv2.INTER_LINEAR)
+        #final_image = np.array([np.array([resized_image]).reshape(list(self.target_dimensions)+[self.channels])])
         final_image = np.array([np.array([resized_image]).reshape(list(self.target_dimensions)+[self.channels])])
+        print(f"------------")
+        print(f"{gray_image}")
+        print(f"------------")
+        print(f"{resized_image}")
+        print(f"------------")
+        print(f"{self.target_dimensions}")
+        print(f"------------")
+        print(f"{final_image}")
+        print(f"------------")
+        print(f"{list(self.target_dimensions)+[self.channels]}")
+        print(f"------------")
+        print(f"gray_image: {gray_image.ndim},{gray_image.shape},{gray_image.size}")
+        print(f"resized_image: {resized_image.ndim},{resized_image.shape},{resized_image.size}")
+        print(f"final_image: {final_image.ndim},{final_image.shape},{final_image.size}")
         prediction = self.model.predict(final_image)
         # Return the dominant expression
         dominant_expression = self._print_prediction(prediction[0])
@@ -109,7 +134,7 @@ class FERModel:
             model_file = 'models/conv_model_%s.hdf5' % model_suffix
         emotion_map_file = 'models/conv_emotion_map_%s.json' % model_suffix
         emotion_map = json.loads(open(resource_filename('EmoPy', emotion_map_file)).read())
-        return load_model(resource_filename('EmoPy', model_file)), emotion_map
+        return load_model(resource_filename('EmoPy', model_file),custom_objects={'cosine_proximity':cosine_proximity}), emotion_map
 
     def _print_prediction(self, prediction):
         normalized_prediction = [x/sum(prediction) for x in prediction]
